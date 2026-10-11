@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="mono">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat with your PDF</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --btn: linear-gradient(135deg,var(--a1),var(--a2)); --on-btn:#fff; }
+  :root[data-theme="mono"] { --bg:#000; --glass:rgba(255,255,255,.05); --line:rgba(255,255,255,.13); --text:#f4f4f4; --muted:#9b9b9b; --a1:#ffffff; --a2:#9a9a9a; --btn:linear-gradient(135deg,#f2f2f2,#b5b5b5); --on-btn:#0a0a0a; --dot:255,255,255; }
+  :root[data-theme="aurora"] { --bg:#070913; --glass:rgba(255,255,255,.05); --line:rgba(255,255,255,.10); --text:#eef0ff; --muted:#9aa0c3; --a1:#7c5cff; --a2:#22d3ee; --blob1:#5b3cff; --blob2:#06b6d4; --dot:150,170,255; }
+  :root[data-theme="sunset"] { --bg:#140a12; --glass:rgba(255,255,255,.05); --line:rgba(255,255,255,.10); --text:#fff0ee; --muted:#c9a3a8; --a1:#ff7a59; --a2:#ff3d81; --blob1:#ff5a3c; --blob2:#c026d3; --dot:255,150,120; }
+  :root[data-theme="matrix"] { --bg:#04100a; --glass:rgba(0,255,140,.05); --line:rgba(0,255,140,.18); --text:#dcffe9; --muted:#7fbf9b; --a1:#00e676; --a2:#00bcd4; --blob1:#00a85a; --blob2:#006b8f; --dot:0,230,118; }
+  :root[data-theme="light"]  { --bg:#f4f6fc; --glass:rgba(255,255,255,.75); --line:rgba(20,30,80,.10); --text:#161a33; --muted:#6a7094; --a1:#5b5bf0; --a2:#06b6d4; --blob1:#a5b4fc; --blob2:#a5f3fc; --dot:40,50,110; }
+
+  * { box-sizing:border-box; margin:0; }
+  html { scroll-behavior:smooth; }
+  body { font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background .4s; }
+
+
+  .app { position:relative; z-index:1; max-width:900px; margin:0 auto; padding:0 18px 150px; }
+
+  header { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; backdrop-filter:blur(14px); }
+  .brand { display:flex; align-items:center; gap:10px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:21px; }
+  .logo { width:34px; height:34px; border-radius:10px; background:var(--btn); display:grid; place-items:center; color:var(--on-btn); font-size:18px; box-shadow:0 6px 24px -6px var(--a1); }
+  .tools { display:flex; align-items:center; gap:10px; }
+  .dots { display:flex; gap:7px; padding:6px 9px; border:1px solid var(--line); border-radius:99px; background:var(--glass); }
+  .dot { width:16px; height:16px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:transform .15s; }
+  .dot:hover { transform:scale(1.2); } .dot.on { border-color:var(--text); }
+  .btn { border:1px solid var(--line); background:var(--glass); color:var(--text); padding:8px 14px; border-radius:99px; font-size:13px; cursor:pointer; font-family:inherit; transition:.2s; }
+  .btn:hover { border-color:var(--a1); }
+
+  .docs { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 4px; }
+  .chip { font-size:12px; padding:5px 11px; border-radius:99px; border:1px solid var(--line); background:var(--glass); color:var(--muted); }
+
+  /* hero */
+  #hero { text-align:center; padding:9vh 0 20px; animation:rise .6s both; }
+  #hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(34px,6vw,56px); line-height:1.1; letter-spacing:-1.5px; }
+  .grad { background:linear-gradient(120deg,var(--a1),var(--a2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #hero p { color:var(--muted); margin:14px auto 28px; max-width:520px; line-height:1.6; }
+  .suggest { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; text-align:left; }
+  .sg { padding:14px 16px; border-radius:14px; border:1px solid var(--line); background:var(--glass); cursor:pointer; font-size:14px; line-height:1.4; transition:.2s; backdrop-filter:blur(8px); }
+  .sg:hover { transform:translateY(-3px); border-color:var(--a1); box-shadow:0 12px 30px -14px var(--a1); }
+  .sg span { display:block; font-size:11px; color:var(--a2); margin-bottom:4px; text-transform:uppercase; letter-spacing:.8px; }
+
+  /* messages */
+  .msg { margin:22px 0; animation:rise .45s both; }
+  @keyframes rise { from { opacity:0; transform:translateY(14px); } }
+  .user { display:flex; justify-content:flex-end; }
+  .user div { max-width:80%; padding:12px 18px; border-radius:20px 20px 4px 20px; background:var(--btn); color:var(--on-btn); font-size:15px; line-height:1.5; box-shadow:0 10px 30px -14px var(--a1); }
+  .bot { display:flex; gap:12px; }
+  .avatar { flex:none; width:32px; height:32px; border-radius:10px; background:var(--btn); display:grid; place-items:center; color:var(--on-btn); font-size:15px; margin-top:2px; }
+  .bubble { flex:1; min-width:0; }
+  .answer { padding:16px 20px; border-radius:4px 20px 20px 20px; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(10px); line-height:1.75; font-size:15.5px; }
+  .pill { display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 5px; margin:0 2px; border-radius:6px; border:0; background:var(--btn); color:var(--on-btn); font-size:11px; font-weight:600; cursor:pointer; vertical-align:2px; transition:transform .15s; }
+  .pill:hover { transform:scale(1.18); }
+  .actions { display:flex; gap:8px; margin-top:8px; }
+  .mini { font-size:12px; color:var(--muted); background:none; border:0; cursor:pointer; padding:4px 6px; border-radius:6px; }
+  .mini:hover { color:var(--text); background:var(--glass); }
+
+  .srcs { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; margin-top:12px; }
+  details.src { border:1px solid var(--line); border-radius:12px; background:var(--glass); padding:10px 12px; font-size:13px; transition:.2s; }
+  details.src.cited { border-color:color-mix(in srgb,var(--a1) 60%,transparent); }
+  details.src.flash { animation:flash 1.2s; }
+  @keyframes flash { 30% { box-shadow:0 0 0 3px var(--a2); } }
+  details.src summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; }
+  details.src summary::-webkit-details-marker { display:none; }
+  .num { flex:none; width:22px; height:22px; border-radius:7px; background:var(--line); display:grid; place-items:center; font-size:11px; font-weight:600; }
+  .cited .num { background:var(--btn); color:var(--on-btn); }
+  .meta { min-width:0; flex:1; } .meta b { display:block; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meta small { color:var(--muted); }
+  .bar { height:3px; border-radius:3px; background:var(--line); margin-top:5px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--a1),var(--a2)); }
+  .src p { margin-top:10px; color:var(--muted); line-height:1.55; max-height:200px; overflow:auto; }
+
+  .think { display:flex; gap:6px; padding:18px 20px; } .think i { width:8px; height:8px; border-radius:50%; background:var(--a2); animation:bounce 1s infinite; }
+  .think i:nth-child(2) { animation-delay:.15s; background:var(--a1); } .think i:nth-child(3) { animation-delay:.3s; }
+  @keyframes bounce { 50% { transform:translateY(-7px); opacity:.5; } }
+
+  /* input */
+  .dock { position:fixed; left:0; right:0; bottom:0; z-index:10; padding:14px 18px 20px; background:linear-gradient(transparent,var(--bg) 40%); }
+  .box { max-width:900px; margin:0 auto; display:flex; gap:10px; padding:8px; border-radius:18px; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(18px); box-shadow:0 20px 50px -20px #000; transition:.2s; }
+  .box:focus-within { border-color:var(--a1); box-shadow:0 0 0 4px color-mix(in srgb,var(--a1) 20%,transparent); }
+  .box input { flex:1; background:none; border:0; outline:0; color:var(--text); font-size:15.5px; padding:10px 12px; font-family:inherit; }
+  .box input::placeholder { color:var(--muted); }
+  .send { border:0; border-radius:12px; padding:0 22px; color:var(--on-btn); font-weight:600; cursor:pointer; font-family:inherit; background:var(--btn); transition:.2s; }
+  .send:hover { filter:brightness(1.12); transform:translateY(-1px); } .send:disabled { opacity:.5; transform:none; cursor:default; }
+  #toast { position:fixed; top:74px; left:50%; transform:translateX(-50%); padding:9px 18px; border-radius:99px; background:var(--glass); border:1px solid var(--line); backdrop-filter:blur(12px); font-size:13px; opacity:0; transition:.3s; pointer-events:none; z-index:20; }
+  #toast.show { opacity:1; }
+
+  /* ===== upload dropzone ===== */
+  .drop { display:flex; flex-direction:column; align-items:center; gap:6px; padding:40px 20px; max-width:560px; margin:0 auto; border:2px dashed var(--line); border-radius:22px; background:var(--glass); backdrop-filter:blur(10px); cursor:pointer; transition:.2s; }
+  .drop:hover, .drop.over { border-color:var(--a1); transform:translateY(-2px); box-shadow:0 18px 44px -22px var(--a1); }
+  .drop .up { width:50px; height:50px; border-radius:15px; background:var(--btn); display:grid; place-items:center; color:var(--on-btn); font-size:22px; margin-bottom:8px; }
+  .drop b { font-size:17px; } .drop span { color:var(--muted); font-size:13px; }
+  .chip button { background:none; border:0; color:var(--muted); cursor:pointer; margin-left:6px; font-size:14px; line-height:1; }
+  .chip button:hover { color:var(--text); }
+  .chip.busy { animation:pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.45; } }
+  .box input:disabled { cursor:not-allowed; }
+
+  /* ===== dot-wave background ===== */
+  #wave { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="wave" aria-hidden="true"></canvas>
+<div id="toast"></div>
+
+<div class="app">
+  <header>
+    <div class="brand"><div class="logo">✦</div>Chat with your PDF</div>
+    <div class="tools">
+      <div class="dots" id="dots">
+        <div class="dot" data-t="mono" style="background:linear-gradient(135deg,#fff,#555)" title="Mono"></div>
+        <div class="dot" data-t="aurora" style="background:linear-gradient(135deg,#7c5cff,#22d3ee)" title="Aurora"></div>
+        <div class="dot" data-t="sunset" style="background:linear-gradient(135deg,#ff7a59,#ff3d81)" title="Sunset"></div>
+        <div class="dot" data-t="matrix" style="background:linear-gradient(135deg,#00e676,#00bcd4)" title="Matrix"></div>
+        <div class="dot" data-t="light" style="background:linear-gradient(135deg,#fff,#c7d2fe)" title="Light"></div>
+      </div>
+      <label class="btn" for="file">＋ Add PDF</label>
+      <input type="file" id="file" accept="application/pdf" hidden>
+    </div>
+  </header>
+
+  <div class="docs" id="docs"></div>
+
+  <section id="hero">
+    <h1>Ask your PDF <span class="grad">anything.</span></h1>
+    <p>Upload any PDF and ask questions about it. It finds the most relevant passages and answers with page-level citations you can click.</p>
+    <label id="drop" class="drop" for="file">
+      <div class="up">⬆</div>
+      <b>Drop a PDF here</b>
+      <span>or click to choose a file · up to 25 MB</span>
+    </label>
+    <div class="suggest" id="suggest" style="display:none">
+      <div class="sg"><span>Overview</span>Summarize this document in 5 bullet points</div>
+      <div class="sg"><span>Findings</span>What are the key findings or conclusions?</div>
+      <div class="sg"><span>Purpose</span>What problem does this document try to solve?</div>
+      <div class="sg"><span>Method</span>Explain the methodology in simple words</div>
+    </div>
+  </section>
+
+  <main id="chat"></main>
+</div>
+
+<div class="dock"><div class="box">
+  <input id="q" type="text" placeholder="Upload a PDF to start asking…" autocomplete="off" disabled>
+  <button class="send" id="send" disabled>Ask ➤</button>
+</div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let msgCount = 0, hasDocs = false, busy = false, docs = [];
+
+/* every visitor gets a private workspace, identified by a random id */
+function makeId() {
+  return (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+    : (Date.now().toString(16) + Math.random().toString(16).slice(2) + '0000000000000000').slice(0, 32);
+}
+let SID = null; try { SID = localStorage.getItem('pdfchat-sid'); } catch {}
+if (!SID) { SID = makeId(); try { localStorage.setItem('pdfchat-sid', SID); } catch {} }
+const H = (extra = {}) => ({ 'X-Session': SID, ...extra });
+
+/* theme */
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.querySelectorAll('.dot').forEach(d => d.classList.toggle('on', d.dataset.t === t));
+  try { localStorage.setItem('pdfchat-theme', t); } catch {}
+  if (window.waveRefresh) window.waveRefresh();
+}
+document.querySelectorAll('.dot').forEach(d => d.onclick = () => setTheme(d.dataset.t));
+const THEMES = ['mono', 'aurora', 'sunset', 'matrix', 'light'];
+let saved = 'mono'; try { saved = localStorage.getItem('pdfchat-theme') || 'mono'; } catch {}
+setTheme(THEMES.includes(saved) ? saved : 'mono');
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3200); }
+
+/* documents */
+function renderDocs(uploading) {
+  let h = docs.map(d => `<span class="chip">📄 ${esc(d.name)} <button title="Remove" data-del="${encodeURIComponent(d.name)}">×</button></span>`).join('');
+  if (uploading) h += `<span class="chip busy">⏳ Reading &amp; indexing ${esc(uploading)}…</span>`;
+  $('docs').innerHTML = h;
+}
+function syncUI() {
+  const chatting = !!document.querySelector('.msg');
+  $('hero').style.display = (hasDocs && chatting) ? 'none' : '';
+  $('drop').style.display = hasDocs ? 'none' : 'flex';
+  $('suggest').style.display = (hasDocs && !chatting) ? 'grid' : 'none';
+  $('q').disabled = !hasDocs;
+  $('send').disabled = !hasDocs || busy;
+  $('q').placeholder = hasDocs ? 'Ask something about your PDF…' : 'Upload a PDF to start asking…';
+}
+async function refreshDocs() {
+  try {
+    const r = await fetch('/documents', { headers: H() });
+    docs = (await r.json()).documents || [];
+    hasDocs = docs.length > 0;
+    renderDocs(); syncUI();
+  } catch { $('docs').innerHTML = '<span class="chip">Server not reachable</span>'; }
+}
+async function uploadFile(f) {
+  if (!f) return;
+  if (!/\.pdf$/i.test(f.name)) { toast('Please choose a PDF file'); return; }
+  busy = true; syncUI(); renderDocs(f.name);
+  const fd = new FormData(); fd.append('file', f);
+  try {
+    const r = await fetch('/upload', { method:'POST', headers: H(), body: fd });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.detail || 'Upload failed');
+    toast(`Ready ✓ ${data.name} · ${data.pages} pages`);
+  } catch (e) { toast(e.message); }
+  busy = false; await refreshDocs(); if (hasDocs) $('q').focus();
+}
+$('file').onchange = e => { uploadFile(e.target.files[0]); e.target.value = ''; };
+$('docs').addEventListener('click', async e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  await fetch('/documents/' + b.dataset.del, { method:'DELETE', headers: H() });
+  refreshDocs();
+});
+['dragenter', 'dragover'].forEach(ev => window.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => window.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+window.addEventListener('drop', e => uploadFile(e.dataTransfer.files[0]));
+
+/* rendering answers */
+function renderAnswer(text, id) {
+  let h = esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  h = h.replace(/\[(\d+)\]/g, (m, n) => `<button class="pill" data-m="${id}" data-n="${n}">${n}</button>`);
+  return h.replace(/\n/g, '<br>');
+}
+function sourceCards(sources, id) {
+  return sources.map(s => `
+    <details class="src ${s.cited ? 'cited' : ''}" id="src-${id}-${s.id}">
+      <summary><span class="num">${s.id}</span>
+        <span class="meta"><b>${esc(s.file)}</b><small>page ${s.page} · relevance ${Math.round(s.score * 100)}%</small>
+        <div class="bar"><i style="width:${Math.max(4, Math.min(100, s.score * 100))}%"></i></div></span></summary>
+      <p>${esc(s.text)}</p>
+    </details>`).join('');
+}
+$('chat').addEventListener('click', e => {
+  const p = e.target.closest('.pill');
+  if (p) {
+    const el = $(`src-${p.dataset.m}-${p.dataset.n}`); if (!el) return;
+    el.open = true; el.scrollIntoView({ behavior:'smooth', block:'center' });
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); return;
+  }
+  const c = e.target.closest('[data-copy]');
+  if (c) { navigator.clipboard.writeText(decodeURIComponent(c.dataset.copy)); toast('Copied ✓'); }
+});
+
+async function ask(question) {
+  question = (question || $('q').value).trim();
+  if (!question) return;
+  if (!hasDocs) { toast('Upload a PDF first'); return; }
+  $('q').value = ''; $('send').disabled = true;
+  const id = ++msgCount;
+  $('chat').insertAdjacentHTML('beforeend', `
+    <div class="msg user"><div>${esc(question)}</div></div>
+    <div class="msg bot" id="bot-${id}"><div class="avatar">✦</div>
+      <div class="bubble"><div class="answer"><div class="think" style="padding:0"><i></i><i></i><i></i></div></div></div></div>`);
+  syncUI(); $('send').disabled = true;
+  window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' });
+  const bubble = document.querySelector(`#bot-${id} .bubble`);
+  try {
+    const r = await fetch('/ask', { method:'POST', headers: H({ 'Content-Type':'application/json' }), body: JSON.stringify({ question }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Request failed');
+    bubble.innerHTML = `<div class="answer">${renderAnswer(data.answer, id)}</div>
+      <div class="actions"><button class="mini" data-copy="${encodeURIComponent(data.answer)}">⧉ Copy</button></div>
+      ${data.sources.length ? `<div class="srcs">${sourceCards(data.sources, id)}</div>` : ''}`;
+  } catch (err) {
+    bubble.innerHTML = `<div class="answer">⚠️ ${esc(err.message)}</div>`;
+  }
+  $('send').disabled = !hasDocs; $('q').focus();
+  window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' });
+}
+$('send').onclick = () => ask();
+$('q').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+document.querySelectorAll('.sg').forEach(el => el.onclick = () => ask(el.textContent.replace(el.querySelector('span').textContent, '').trim()));
+
+/* dot-wave background */
+(function () {
+  const cv = document.getElementById('wave'), ctx = cv.getContext('2d');
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, C, R, rgb = '255,255,255', mx = 0, my = 0, px = 0, py = 0;
+  function color() { const v = getComputedStyle(document.documentElement).getPropertyValue('--dot').trim(); if (v) rgb = v; }
+  function size() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const small = W < 700; C = small ? 90 : 170; R = small ? 55 : 95;
+  }
+  const hgt = (x, z, t) =>
+      Math.sin(x * 1.25 + t * 0.55) * 0.34
+    + Math.sin(z * 1.05 - t * 0.45 + x * 0.55) * 0.30
+    + Math.sin((x + z) * 2.1 + t * 0.85) * 0.12
+    + Math.sin(x * 3.0 - z * 2.2 + t * 0.35) * 0.06;
+  function draw(t) {
+    ctx.clearRect(0, 0, W, H);
+    const f = H * 0.55, horizon = H * 0.26 + py * 18, camH = 1.55;
+    for (let i = R - 1; i >= 0; i--) {                     // far rows first
+      const z = 1.4 + Math.pow(i / (R - 1), 1.7) * 8.4;
+      const a = Math.max(0.05, 1 - (z - 1.4) / 9) * 0.6;
+      const s = Math.max(1, 2.6 / z + 0.5), k = f / z;
+      ctx.fillStyle = `rgba(${rgb},${a.toFixed(3)})`;
+      for (let j = 0; j < C; j++) {
+        const x = -5.5 + 11 * j / (C - 1);
+        const y = hgt(x + px * 0.6, z, t) * 0.8;
+        const sx = W / 2 + (x - px * 0.4) * k, sy = horizon + (camH - y) * k;
+        if (sx < -4 || sx > W + 4 || sy < 0 || sy > H) continue;
+        ctx.fillRect(sx, sy, s, s);
+      }
+    }
+  }
+  function loop(ms) { px += (mx - px) * 0.05; py += (my - py) * 0.05; draw(ms / 1000); requestAnimationFrame(loop); }
+  addEventListener('resize', () => { size(); if (reduce) draw(2.5); });
+  addEventListener('mousemove', e => { mx = (e.clientX / W - 0.5) * 2; my = (e.clientY / H - 0.5) * 2; }, { passive: true });
+  window.waveRefresh = () => { color(); if (reduce) draw(2.5); };
+  size(); color();
+  if (reduce) draw(2.5); else requestAnimationFrame(loop);
+})();
+refreshDocs();
+</script>
+</body>
+</html>

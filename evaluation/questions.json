@@ -1,0 +1,5 @@
+[
+  {"question": "What is Retrieval-Augmented Generation?", "expect_keywords": ["retrieval", "generation"]},
+  {"question": "What does RAG use as non-parametric memory?", "expect_keywords": ["wikipedia"]},
+  {"question": "What is the difference between RAG-Sequence and RAG-Token?", "expect_keywords": ["sequence", "token"]}
+]
